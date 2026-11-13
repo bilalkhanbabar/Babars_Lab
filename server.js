@@ -173,6 +173,7 @@ app.get('/api/debug/users', (req, res) => {
 });
 
 // Server Start
-app.listen(PORT, () => {
-    console.log(`Server is running smoothly at http://localhost:${PORT}`);
+// Server Start
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server is running smoothly at http://0.0.0.0:${PORT}`);
 });
