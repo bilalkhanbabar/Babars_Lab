@@ -8,6 +8,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        // Production API Base URL pointing to Railway backend
+        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? '' 
+            : 'https://babarslab-production.up.railway.app';
+    </script>
     <style>
         .glass-card {
             background: rgba(17, 24, 39, 0.85);
@@ -68,7 +74,7 @@
                     </div>
                 </div>
                 <div class="flex justify-between items-center text-xs">
-                    <span class="text-gray-400">Live SQLite DB Connected</span>
+                    <span class="text-gray-400">Live Railway SQLite DB Connected</span>
                     <button type="button" onclick="switchAuthView('forgot')" class="text-purple-400 hover:underline cursor-pointer font-semibold">Forgot Password?</button>
                 </div>
                 <button type="submit" class="w-full py-3.5 bg-gradient-to-r from-purple-600 to-pink-600 font-bold text-sm rounded-xl hover:opacity-95 transition shadow-lg cursor-pointer">
@@ -227,7 +233,7 @@
         <!-- Sidebar Footer & Logout -->
         <div class="p-3 border-t border-gray-800 space-y-2">
             <div class="flex items-center space-x-3 px-2 py-1">
-                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center font-bold text-xs shrink-0">B</div>
+                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center font-bold text-xs shrink-0" id="sidebar-avatar-initial">B</div>
                 <div class="sidebar-text truncate">
                     <p class="text-xs font-bold" id="sidebar-user-name">Bilal Khan Babar</p>
                     <p class="text-[10px] text-purple-400 font-semibold"><span id="sidebar-credits-left">100,000</span> Credits Left</p>
@@ -282,7 +288,7 @@
                     </button>
                 </div>
 
-                <!-- Stats Grid -->
+                <!-- Stats Grid (Starts at 0 for fresh accounts) -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div class="glass-card p-6 rounded-3xl relative overflow-hidden flex flex-col justify-between h-44">
                         <div>
@@ -290,7 +296,7 @@
                                 <span class="text-xs font-bold uppercase tracking-wider text-purple-400">Scripts Written</span>
                                 <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center"><i class="fa-solid fa-file-lines text-xs"></i></div>
                             </div>
-                            <h3 class="text-4xl font-black mt-3 text-white" id="stat-scripts">5</h3>
+                            <h3 class="text-4xl font-black mt-3 text-white" id="stat-scripts">0</h3>
                         </div>
                         <div class="text-xs text-gray-400 font-medium">Cost: 50 Credits/ea</div>
                     </div>
@@ -301,7 +307,7 @@
                                 <span class="text-xs font-bold uppercase tracking-wider text-pink-400">HD Images</span>
                                 <div class="w-8 h-8 rounded-xl bg-pink-500/10 text-pink-400 flex items-center justify-center"><i class="fa-solid fa-image text-xs"></i></div>
                             </div>
-                            <h3 class="text-4xl font-black mt-3 text-white" id="stat-images">5</h3>
+                            <h3 class="text-4xl font-black mt-3 text-white" id="stat-images">0</h3>
                         </div>
                         <div class="text-xs text-gray-400 font-medium">Cost: 20 Credits/ea</div>
                     </div>
@@ -780,7 +786,7 @@
                 <h1 class="text-4xl font-black tracking-tight text-white">USER PROFILE & SUBSCRIPTION</h1>
                 <div class="glass-card p-8 rounded-3xl space-y-6">
                     <div class="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6 border-b border-gray-800 pb-6">
-                        <div class="w-24 h-24 rounded-3xl bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center font-black text-4xl shadow-xl shrink-0">
+                        <div id="profile-avatar-big" class="w-24 h-24 rounded-3xl bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center font-black text-4xl shadow-xl shrink-0">
                             B
                         </div>
                         <div class="text-center md:text-left space-y-2 w-full">
@@ -883,14 +889,8 @@
 
     <!-- JAVASCRIPT & BACKEND FETCH WIRING -->
     <script>
-        let stats = { scripts: 5, images: 5, videos: 0, voices: 0 };
-        let generationHistory = [
-            { id: 1, type: 'Script to Prompt', content: '1. [16:9, Cinematic 4K]: Ancient ruins of a forgotten city hidden inside Balochistan mountains...', time: 'Just now' },
-            { id: 2, type: 'Text to Image', content: 'Rendered Image 1: Ancient Balochistan Mountain Ruins (1080p)', time: 'Just now' },
-            { id: 3, type: 'Text to Image', content: 'Rendered Image 2: Glowing Neon Underground Vault (1080p)', time: 'Just now' },
-            { id: 4, type: 'Text to Image', content: 'Rendered Image 3: Futuristic Holographic Map Interface (1080p)', time: 'Just now' },
-            { id: 5, type: 'Text to Image', content: 'Rendered Image 4: Heavy Security Drones Patrolling Gateway (1080p)', time: 'Just now' }
-        ];
+        let stats = { scripts: 0, images: 0, videos: 0, voices: 0 };
+        let generationHistory = [];
 
         let currentUser = null;
         let hardwareProfile = { mode: 'gpu', capacity: 4, batchSize: 12 };
@@ -926,7 +926,6 @@
                 } catch(e) {}
             }
             
-            // Default state for fresh visitors / friends: Force Login screen open
             currentUser = null;
             document.getElementById('auth-wrapper').classList.remove('hidden');
         };
@@ -946,13 +945,13 @@
             }
         }
 
-        // ================= REAL BACKEND API WIRING =================
+        // ================= REAL RAILWAY BACKEND API WIRING =================
         async function handleLogin() {
             const email = document.getElementById('login-email').value.trim();
             const password = document.getElementById('login-password').value.trim();
 
             try {
-                const res = await fetch('/api/login', {
+                const res = await fetch(`${API_BASE_URL}/api/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password })
@@ -966,7 +965,7 @@
                     alert(data.message);
                 }
             } catch (err) {
-                alert('Connection error with backend server.');
+                alert('Connection error with Railway backend server.');
             }
         }
 
@@ -993,7 +992,7 @@
             }
 
             try {
-                const res = await fetch('/api/register', {
+                const res = await fetch(`${API_BASE_URL}/api/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(tempRegisterData)
@@ -1007,7 +1006,7 @@
                     alert(data.message);
                 }
             } catch (err) {
-                alert('Connection error with backend server.');
+                alert('Connection error with Railway backend server.');
             }
         }
 
@@ -1023,7 +1022,7 @@
             document.getElementById('form-forgot-otp').classList.remove('hidden');
         }
 
-        // STEP 2: Verify Forgot OTP & Reset Password via Backend
+        // STEP 2: Verify Forgot OTP & Reset Password via Railway Backend
         async function verifyAndResetPassword() {
             const otp = document.getElementById('forgot-otp-input').value.trim();
             if (otp !== '1234') {
@@ -1032,7 +1031,7 @@
             }
 
             try {
-                const res = await fetch('/api/forgot-password', {
+                const res = await fetch(`${API_BASE_URL}/api/forgot-password`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email: tempForgotData.email, tillId: 'BYPASS-TID', newPassword: tempForgotData.newPassword })
@@ -1043,7 +1042,7 @@
                     switchAuthView('login');
                 }
             } catch (err) {
-                alert('Connection error with backend server.');
+                alert('Connection error with Railway backend server.');
             }
         }
 
@@ -1055,6 +1054,13 @@
             document.getElementById('sidebar-user-name').innerText = currentUser.name;
             document.getElementById('profile-display-email').innerText = currentUser.email;
             document.getElementById('settings-email').value = currentUser.email;
+            
+            // Set Dynamic Initials for Avatars
+            const firstLetter = currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'B';
+            document.getElementById('sidebar-avatar-initial').innerText = firstLetter;
+            const profileAvatarBig = document.getElementById('profile-avatar-big');
+            if(profileAvatarBig) profileAvatarBig.innerText = firstLetter;
+
             updateCreditDisplays();
         }
 
@@ -1097,6 +1103,10 @@
             document.getElementById('profile-display-name').innerText = newName;
             document.getElementById('dash-username').innerText = newName;
             document.getElementById('sidebar-user-name').innerText = newName;
+            const firstLetter = newName.charAt(0).toUpperCase();
+            document.getElementById('sidebar-avatar-initial').innerText = firstLetter;
+            const profileAvatarBig = document.getElementById('profile-avatar-big');
+            if(profileAvatarBig) profileAvatarBig.innerText = firstLetter;
             closeRenameModal();
         }
 
@@ -1106,7 +1116,8 @@
                 if (saved) {
                     currentUser = JSON.parse(saved);
                 } else {
-                    currentUser = { email: "bilal@babarlab.com", credits: 100000, name: "Bilal Khan Babar" };
+                    alert('⚠️ Please log in first to execute modules.');
+                    return;
                 }
             }
 
@@ -1116,7 +1127,7 @@
             }
 
             try {
-                const res = await fetch('/api/deduct-credits', {
+                const res = await fetch(`${API_BASE_URL}/api/deduct-credits`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email: currentUser.email, cost, moduleType })

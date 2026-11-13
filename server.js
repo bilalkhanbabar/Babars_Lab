@@ -5,15 +5,16 @@ const cors = require('cors');
 const path = require('path');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Database Setup
-const db = new sqlite3.Database('./database.db', (err) => {
+// Database Setup (Railway persistent path or local fallback)
+const dbPath = path.resolve(__dirname, 'database.sqlite');
+const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error('Database connection error:', err.message);
     } else {
@@ -28,7 +29,8 @@ db.run(`CREATE TABLE IF NOT EXISTS users (
     email TEXT UNIQUE,
     phone TEXT,
     password TEXT,
-    credits INTEGER DEFAULT 100000
+    credits INTEGER DEFAULT 100000,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )`);
 
 // 1. REGISTER API
@@ -94,24 +96,18 @@ app.post('/api/login', (req, res) => {
     });
 });
 
-// 3. FORGOT PASSWORD API (Till ID Verification Simulation)
+// 3. FORGOT PASSWORD API
 app.post('/api/forgot-password', async (req, res) => {
     const { email, tillId, newPassword } = req.body;
 
-    if (!email || !tillId || !newPassword) {
-        return res.status(400).json({ success: false, message: "All fields including Till/Transaction ID are required!" });
+    if (!email || !newPassword) {
+        return res.status(400).json({ success: false, message: "Email and new password are required!" });
     }
 
-    // Basic validation for admin/transaction verification flow
     const query = `SELECT * FROM users WHERE email = ?`;
     db.get(query, [email], async (err, user) => {
         if (err || !user) {
             return res.status(400).json({ success: false, message: "Email not found in database!" });
-        }
-
-        // In production, tillId is verified against gateway payment logs. Here we validate format.
-        if (tillId.length < 5) {
-            return res.status(400).json({ success: false, message: "Invalid Transaction/Till ID format!" });
         }
 
         const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -119,11 +115,12 @@ app.post('/api/forgot-password', async (req, res) => {
             if (updateErr) {
                 return res.status(500).json({ success: false, message: "Error updating password." });
             }
-            res.json({ success: true, message: "Password reset successfully using verified Transaction ID!" });
+            res.json({ success: true, message: "Password reset successfully!" });
         });
     });
 });
-// DEDUCT CREDITS API
+
+// 4. DEDUCT CREDITS API
 app.post('/api/deduct-credits', (req, res) => {
     const { email, cost, moduleType } = req.body;
 
@@ -156,9 +153,23 @@ app.post('/api/deduct-credits', (req, res) => {
         });
     });
 });
-// Test Route
+
+// 5. TEST ROUTE
 app.get('/api/test', (req, res) => {
     res.json({ message: "BABAR LAB Backend Server is Running Live with APIs!" });
+});
+
+// ==========================================
+// 6. DEBUG ROUTE TO VIEW ALL USERS IN DATABASE
+// ==========================================
+app.get('/api/debug/users', (req, res) => {
+    db.all("SELECT id, name, email, credits, created_at FROM users", [], (err, rows) => {
+        if (err) {
+            res.status(500).json({ success: false, error: err.message });
+        } else {
+            res.json({ success: true, total_users: rows.length, users: rows });
+        }
+    });
 });
 
 // Server Start
