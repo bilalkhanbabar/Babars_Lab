@@ -177,3 +177,5 @@ app.get('/api/debug/users', (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running smoothly at http://0.0.0.0:${PORT}`);
 });
+
+// Force restart trigger
